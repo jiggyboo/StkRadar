@@ -59,12 +59,6 @@ X_train = TimeSeriesScalerMeanVariance().fit_transform(X_train[:50])
 # Make time series shorter
 X_train = TimeSeriesResampler(sz=40).fit_transform(X_train)
 sz = X_train.shape[1]
-print(X_train.shape)
-print(type(X_train))
-print(X_train)
-print(len(X_train))
-print(sz)
-print(type(sz))
 
 
 # Euclidean k-means
