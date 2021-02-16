@@ -5,8 +5,9 @@ Wildly covered news of Gamestop(GME)'s stock "skyrocketting", jumping from mere 
 
 The aim of my program is to find these pennystocks at the right time, purchasing before its rise and then sell before it hits its peak. I will achieve this by doing the following:
 
-Scraping the right subreddit(/r/pennystocks) for the next pennystock on the rise.
-Building machine learning model that categorizes stocks based on the price history through dynamic time warping clustering.
-Based on the train data, the stock's price history will be used to predict it's profitability.
-Automate trading through stock trading API.
+1. Scraping the right subreddit(/r/pennystocks) for the next pennystock on the rise.
+2. Building machine learning model that categorizes stocks based on the price history through dynamic time warping clustering.
+3. Based on the train data, the stock's price history will be used to predict it's profitability.
+4. Automate trading through stock trading API.
+
 Currently, I am collecting the data necessary to train the machien learning model.
