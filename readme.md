@@ -10,3 +10,5 @@ Building machine learning model that categorizes stocks based on the price histo
 Based on the train data, the stock's price history will be used to predict it's profitability.
 Automate trading through stock trading API.
 Currently, I am collecting the data necessary to train the machien learning model.
+
+is it working?
