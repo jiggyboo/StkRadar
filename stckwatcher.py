@@ -1,14 +1,16 @@
-import praw
-from praw.models import MoreComments
-import pandas as pd
-from pandas_datareader import data, wb
-from datetime import datetime, timedelta
-import numpy as np
 from collections import OrderedDict
+from pandas_datareader import data
+from datetime import datetime, timedelta
+from tslearn.clustering import TimeSeriesKMeans as tsm
+from tslearn.preprocessing import TimeSeriesScalerMeanVariance
+import praw
+import pandas as pd
+import numpy as np
 import urllib.request as rq
 import csv
 import io
 import matplotlib.pyplot as plt
+
 
 class StkHelper():
 
@@ -16,7 +18,7 @@ class StkHelper():
     commonCounter = {} # list of common words that happen to be also tickers
     stklist = [] # list of stocks already in data
     postnum = 50 # number of top posts to scrape
-    ranknum = 10 # number of stks to rank
+    ranknum = 20 # number of stks to rank
     time = 'day' # time_filter for praw top posts('all','hour','day','week','month','year')
     now = datetime.today()-timedelta(hours=14) # time based on UTC
 
@@ -33,7 +35,8 @@ class StkHelper():
         wrdlist1 = []
         for row in datareader:
             wrdlist1.append(row[0])
-        commonList = {"PE","S","DO","IMO","HOPE","A", "IS", "FOR", "ARE", "ALL", "IT", "ON", "AT", "CAN", "BE", "GO", "OR", "AM", 
+        # Tickers that happen to be commonly used words
+        commonList = {"TOO","PE","S","DO","IMO","HOPE","A", "IS", "FOR", "ARE", "ALL", "IT", "ON", "AT", "CAN", "BE", "GO", "OR", "AM", 
             "AN", "SO", "NEXT", "HE", "LOVE", "ONE", "OUT", "BIG", "NOW", "HAS", "E", "BY", "OPEN", "VERY", 
             "MAN", "TV", "SEE", "CEO", "U", "NEW", "ANY", "F", "UK", "D", "O", "R", "FREE", "LIFE", "ASS",
             "DD","RH","I","AI","USA","ticker"}
@@ -85,27 +88,29 @@ class StkHelper():
                 print("currently",stk)
                 try:
                     stki = data.DataReader(stk, 
-                        start= datetime.today()-timedelta(days=7,hours=14),
+                        start= datetime.today()-timedelta(days=21,hours=14),
                         end= self.now, 
                         data_source='yahoo')
                 except:
                     stki = data.DataReader(stk, 
-                        start= datetime.today()-timedelta(days=7,hours=14),
+                        start= datetime.today()-timedelta(days=21,hours=14),
                         end= self.now, 
                         data_source='yahoo')
                                             
                 if stki['Adj Close'].iloc[-1] < 1 :
                     rank +=1
                     self.update_stk(stk, stklist, writer, rank)
+                    self.assess(stki)
                     print("______________________")
                     print(f"{stk}:{sort_dict[stk]}\t real penny")
-                    print(stki)
+                    # print(stki)
                 elif stki['Adj Close'].iloc[-1] < 5 :
                     rank +=1
                     self.update_stk(stk, stklist, writer, rank)
+                    self.assess(stki)
                     print("______________________")
                     print(f"{stk}:{sort_dict[stk]}\t lincoln")   
-                    print(stki)
+                    # print(stki)
                 else :
                     print("______________________")
                     print(stk,"is over $5:",sort_dict[stk])
@@ -113,6 +118,7 @@ class StkHelper():
                     break
                 
     def create_csv(self): # create ticker list if it doesn't exist
+        
         csv_file = "repos.csv"
         csv_columns = ['Ticker']
         try:
@@ -122,6 +128,7 @@ class StkHelper():
                 writer = csv.DictWriter(csvfile,fieldnames=csv_columns)
 
     def update_stk(self, stk, stklist, writer, rank=0): # update stock's csv
+        
         if stk not in stklist: # stk's missing csv made 
             print("++++++++")
             writer.writerow([stk])
@@ -137,8 +144,6 @@ class StkHelper():
             stki.to_csv('stks/'+stk+'.csv')
 
         elif datetime.today().weekday() < 5: # weekday update(updates the tail only)
-            print(datetime.today().weekday())
-            print(type(datetime.today().weekday()))
             stki = pd.read_csv('stks/'+stk+'.csv', index_col='Date')
             stkt = data.DataReader(stk,
                 start= datetime.today()-timedelta(days=22),
@@ -148,16 +153,10 @@ class StkHelper():
             la = stkt['Adj Close'].rolling(window=20, min_periods=1, center=False).mean()[-1]
             ac = stkt.iloc[[-1]]
             ac.index.array[-1] = pd.Timestamp(self.now.date())
-            print(type(pd.Timestamp(self.now.date())))
-            print(pd.Timestamp(self.now.date()))
-            print(type(ac.index.array[0]))
-            print(ac.index.array[0])
-            print(type(stki.index.array[-1]))
-            print(stki.index.array[-1])
             ac['short_avg'] = sa
             ac['long_avg'] = la
             ac['rank'] = rank
-            print(ac)
+            print("last row /n",ac)
             if stki.index.array[-1] == str(self.now.date()):
                 print("---------")
                 stki.iloc[[-1]] = ac.iloc[[-1]]
@@ -189,7 +188,30 @@ class StkHelper():
         # Show the plot
         plt.show()
 
-             
+    def assess(self, stki):
+        type = ['km.json','dba_km.json','sdtw_km.json']
+        asmnt = ['before the pump.','near the dump.','after the dump.']
+        gbw = list('gbw')
+        rating = [0,0,0]
+        srating = [0,0,0]
+        data = stki['Close']
+        data = data.to_numpy()
+        data = data.reshape(-1,1)
+        data = data[np.newaxis,...]
+        for num in range(3): # no scaler data processing
+            for num1 in range(3):
+                model = tsm.from_json('MLModels/'+gbw[num]+type[num1])
+                bits = model.transform(data)
+                bits = np.sum(bits)
+                rating[num] = rating[num] + bits
+        data = TimeSeriesScalerMeanVariance(1,.5).fit_transform(data)
+        for num in range(3): # scaler data processing
+            for num1 in range(3):
+                model = tsm.from_json('MLModels/s'+gbw[num]+type[num1] )
+                bits = model.transform(data)
+                bits = np.sum(bits)
+                srating[num] = srating[num] + bits
+        print("This stock is possibly "+asmnt[srating.index(min(srating))])
 
 if __name__ == '__main__':
     bang = StkHelper()

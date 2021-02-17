@@ -14,11 +14,12 @@ input = [pd.read_csv('Data/best_time.csv'),pd.read_csv('Data/bad_time.csv'),pd.r
 input[gbw] = input[gbw].iloc[:,1:]
 input[gbw] = input[gbw].to_numpy()
 result = np.transpose(input[gbw])
-result = TimeSeriesScalerMeanVariance(1,.5).fit_transform(result) 
+# result = TimeSeriesScalerMeanVariance(1,.5).fit_transform(result) 
 
 km = TimeSeriesKMeans(n_clusters = cl, verbose=True, random_state=seed)
 y_pred = km.fit_predict(result)
-y_pred.to_json('MLModels/swkm.json')
+# y_pred.to_json('MLModels/swkm.json')
+# print(y_pred.transform(result))
 print(result)
 plt.figure()
 for yi in range(cl):
@@ -39,7 +40,7 @@ dba_km = TimeSeriesKMeans(n_clusters=cl,
                           max_iter_barycenter=10,
                           random_state=seed)
 y_pred = dba_km.fit_predict(result)
-y_pred.to_json('MLModels/swdba_km.json')
+# y_pred.to_json('MLModels/swdba_km.json')
 
 for yi in range(cl):
     plt.subplot(3, 3, 4 + yi)
@@ -58,7 +59,7 @@ sdtw_km = TimeSeriesKMeans(n_clusters=cl,
                            verbose=True,
                            random_state=seed)
 y_pred = sdtw_km.fit_predict(result)
-y_pred.to_json('MLModels/swsdtw_km.json')
+# y_pred.to_json('MLModels/swsdtw_km.json')
 
 for yi in range(cl):
     plt.subplot(3, 3, 7 + yi)
