@@ -1,28 +1,29 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from numpy import genfromtxt
-
 from tslearn.clustering import TimeSeriesKMeans
-from tslearn.datasets import CachedDatasets
-from tslearn.preprocessing import TimeSeriesScalerMeanVariance, \
-    TimeSeriesResampler
+from tslearn.preprocessing import TimeSeriesScalerMeanVariance
+
+# Making ML Models to compare future stocks with.
 
 seed = 0
-inputd = pd.read_csv('dataset.csv')
-inputd = inputd.to_numpy()
-inputd = inputd.transpose()
-inputd = inputd[1:]
-inputd = np.concatenate((inputd[::3],inputd[2::3]))
-km = TimeSeriesKMeans(n_clusters = 2, verbose=True, random_state=seed)
-y_pred = km.fit_predict(inputd)
-model = km.fit(inputd)
-model.to_json('km.json')
-print(inputd)
+cl = 1 # number of clusters
+gbw = 2
+
+input = [pd.read_csv('Data/best_time.csv'),pd.read_csv('Data/bad_time.csv'),pd.read_csv('Data/worst_time.csv')] # preparing Data
+input[gbw] = input[gbw].iloc[:,1:]
+input[gbw] = input[gbw].to_numpy()
+result = np.transpose(input[gbw])
+result = TimeSeriesScalerMeanVariance(1,.5).fit_transform(result) 
+
+km = TimeSeriesKMeans(n_clusters = cl, verbose=True, random_state=seed)
+y_pred = km.fit_predict(result)
+y_pred.to_json('MLModels/swkm.json')
+print(result)
 plt.figure()
-for yi in range(2):
+for yi in range(cl):
     plt.subplot(3, 3, yi + 1)
-    for xx in inputd[y_pred == yi]:
+    for xx in result[y_pred == yi]:
         plt.plot(xx.ravel(), "k-", alpha=.2)
     plt.plot(km.cluster_centers_[yi].ravel(), "r-")
     plt.xlim(0, 15)
@@ -31,19 +32,18 @@ for yi in range(2):
              transform=plt.gca().transAxes)
     plt.title("Euclidean $k$-means")
 
-dba_km = TimeSeriesKMeans(n_clusters=2,
+dba_km = TimeSeriesKMeans(n_clusters=cl,
                           n_init=2,
                           metric="dtw",
                           verbose=True,
                           max_iter_barycenter=10,
                           random_state=seed)
-y_pred = dba_km.fit_predict(inputd)
-model = dba_km.fit(inputd)
-model.to_json('dba_km.json')
+y_pred = dba_km.fit_predict(result)
+y_pred.to_json('MLModels/swdba_km.json')
 
-for yi in range(2):
+for yi in range(cl):
     plt.subplot(3, 3, 4 + yi)
-    for xx in inputd[y_pred == yi]:
+    for xx in result[y_pred == yi]:
         plt.plot(xx.ravel(), "k-", alpha=.2)
     plt.plot(dba_km.cluster_centers_[yi].ravel(), "r-")
     plt.xlim(0, 15)
@@ -52,18 +52,17 @@ for yi in range(2):
              transform=plt.gca().transAxes)
     plt.title("DBA $k$-means")
 
-sdtw_km = TimeSeriesKMeans(n_clusters=2,
+sdtw_km = TimeSeriesKMeans(n_clusters=cl,
                            metric="softdtw",
                            metric_params={"gamma": .01},
                            verbose=True,
                            random_state=seed)
-y_pred = sdtw_km.fit_predict(inputd)
-model = sdtw_km.fit(inputd)
-model.to_json('sdtw_km.json')
+y_pred = sdtw_km.fit_predict(result)
+y_pred.to_json('MLModels/swsdtw_km.json')
 
-for yi in range(2):
+for yi in range(cl):
     plt.subplot(3, 3, 7 + yi)
-    for xx in inputd[y_pred == yi]:
+    for xx in result[y_pred == yi]:
         plt.plot(xx.ravel(), "k-", alpha=.2)
     plt.plot(sdtw_km.cluster_centers_[yi].ravel(), "r-")
     plt.xlim(0, 15)
