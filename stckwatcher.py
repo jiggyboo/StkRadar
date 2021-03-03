@@ -21,6 +21,7 @@ class StkHelper():
     ranknum = 20 # number of stks to rank
     time = 'day' # time_filter for praw top posts('all','hour','day','week','month','year')
     now = datetime.today()-timedelta(hours=14) # time based on UTC
+    price = [1,5] # Price of stocks to consider
 
     def __init__(self):
         print(f"app started, right now it is {self.now}")
@@ -36,10 +37,10 @@ class StkHelper():
         for row in datareader:
             wrdlist1.append(row[0])
         # Tickers that happen to be commonly used words
-        commonList = {"TOO","PE","S","DO","IMO","HOPE","A", "IS", "FOR", "ARE", "ALL", "IT", "ON", "AT", "CAN", "BE", "GO", "OR", "AM", 
+        commonList = {"CBS","TD","TOO","PE","S","DO","IMO","HOPE","A", "IS", "FOR", "ARE", "ALL", "IT", "ON", "AT", "CAN", "BE", "GO", "OR", "AM", 
             "AN", "SO", "NEXT", "HE", "LOVE", "ONE", "OUT", "BIG", "NOW", "HAS", "E", "BY", "OPEN", "VERY", 
             "MAN", "TV", "SEE", "CEO", "U", "NEW", "ANY", "F", "UK", "D", "O", "R", "FREE", "LIFE", "ASS",
-            "DD","RH","I","AI","USA","ticker"}
+            "DD","RH","I","AI","USA","ticker","NFC","BT"}
         self.wrdCounter = dict((stk,[0,0,0]) for stk in wrdlist1)
         self.commonCounter = dict((stk,[0,0,0]) for stk in commonList)
         self.scrape()
@@ -81,6 +82,9 @@ class StkHelper():
             print(word, " has been found ", self.wrdCounter[word])
     
     def update(self, penny, sort_dict, stklist): # Prints Ranked Stock Info        
+        w = open('today.csv', mode='a+', newline='')
+        wwriter = csv.writer(w)
+        wwriter.writerow([f"Today is {self.now.date()}"])
         with open('repos.csv', mode='a+', newline='') as f:
             writer = csv.writer(f)
             rank = 0
@@ -97,23 +101,26 @@ class StkHelper():
                         end= self.now, 
                         data_source='yahoo')
                                             
-                if stki['Adj Close'].iloc[-1] < 1 :
+                if stki['Adj Close'].iloc[-1] < self.price[0] :
                     rank +=1
                     self.update_stk(stk, stklist, writer, rank)
-                    self.assess(stki)
+                    wwriter.writerow([stk])
+                    self.assess(stk, stki)
                     print("______________________")
                     print(f"{stk}:{sort_dict[stk]}\t real penny")
-                    # print(stki)
-                elif stki['Adj Close'].iloc[-1] < 5 :
+                    print(stki)
+                elif stki['Adj Close'].iloc[-1] < self.price[1] :
                     rank +=1
                     self.update_stk(stk, stklist, writer, rank)
-                    self.assess(stki)
+                    wwriter.writerow([stk])
+                    self.assess(stk, stki)
                     print("______________________")
                     print(f"{stk}:{sort_dict[stk]}\t lincoln")   
-                    # print(stki)
+                    print(stki)
                 else :
+                    self.assess(stk, stki)
                     print("______________________")
-                    print(stk,"is over $5:",sort_dict[stk])
+                    print(stk,f"is over ${self.price[1]}:",sort_dict[stk])
                 if rank == self.ranknum:
                     break
                 
@@ -188,30 +195,43 @@ class StkHelper():
         # Show the plot
         plt.show()
 
-    def assess(self, stki):
+    def assess(self, stk, stki):
         type = ['km.json','dba_km.json','sdtw_km.json']
         asmnt = ['before the pump.','near the dump.','after the dump.']
         gbw = list('gbw')
         rating = [0,0,0]
         srating = [0,0,0]
-        data = stki['Close']
-        data = data.to_numpy()
-        data = data.reshape(-1,1)
-        data = data[np.newaxis,...]
+        data1 = stki['Close']
+        data1 = data1.to_numpy()
+        data1 = data1.reshape(-1,1)
+        data1 = data1[np.newaxis,...]
+        if data1.shape[1] != 15:
+            print(data1.shape)
+            need = 15 - data1.shape[1]
+            stki = data.DataReader(stk, 
+                        start= datetime.today()-timedelta(days=21+need,hours=14),
+                        end= self.now, 
+                        data_source='yahoo')
+            data1 = stki['Close']
+            data1 = data1.to_numpy()
+            data1 = data1.reshape(-1,1)
+            data1 = data1[np.newaxis,...]
+
         for num in range(3): # no scaler data processing
             for num1 in range(3):
                 model = tsm.from_json('MLModels/'+gbw[num]+type[num1])
-                bits = model.transform(data)
+                bits = model.transform(data1)
                 bits = np.sum(bits)
                 rating[num] = rating[num] + bits
-        data = TimeSeriesScalerMeanVariance(1,.5).fit_transform(data)
+        data1 = TimeSeriesScalerMeanVariance(1,.5).fit_transform(data1)
         for num in range(3): # scaler data processing
             for num1 in range(3):
                 model = tsm.from_json('MLModels/s'+gbw[num]+type[num1] )
-                bits = model.transform(data)
+                bits = model.transform(data1)
                 bits = np.sum(bits)
                 srating[num] = srating[num] + bits
         print("This stock is possibly "+asmnt[srating.index(min(srating))])
+
 
 if __name__ == '__main__':
     bang = StkHelper()
