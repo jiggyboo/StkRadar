@@ -40,7 +40,7 @@ class StkHelper():
         commonList = {"CBS","TD","TOO","PE","S","DO","IMO","HOPE","A", "IS", "FOR", "ARE", "ALL", "IT", "ON", "AT", "CAN", "BE", "GO", "OR", "AM", 
             "AN", "SO", "NEXT", "HE", "LOVE", "ONE", "OUT", "BIG", "NOW", "HAS", "E", "BY", "OPEN", "VERY", 
             "MAN", "TV", "SEE", "CEO", "U", "NEW", "ANY", "F", "UK", "D", "O", "R", "FREE", "LIFE", "ASS",
-            "DD","RH","I","AI","USA","ticker","NFC","BT"}
+            "DD","RH","I","AI","USA","ticker","NFC","BT", "EV"}
         self.wrdCounter = dict((stk,[0,0,0]) for stk in wrdlist1)
         self.commonCounter = dict((stk,[0,0,0]) for stk in commonList)
         self.scrape()
@@ -96,31 +96,35 @@ class StkHelper():
                         end= self.now, 
                         data_source='yahoo')
                 except:
-                    stki = data.DataReader(stk, 
-                        start= datetime.today()-timedelta(days=21,hours=14),
-                        end= self.now, 
-                        data_source='yahoo')
+                    try:
+                        stki = data.DataReader(stk, 
+                            start= datetime.today()-timedelta(days=21,hours=14),
+                            end= self.now, 
+                            data_source='yahoo')
+                    except:
+                        print(f"failed to grab info about {stk}")
+                        continue
                                             
                 if stki['Adj Close'].iloc[-1] < self.price[0] :
                     rank +=1
                     self.update_stk(stk, stklist, writer, rank)
-                    wwriter.writerow([stk])
-                    self.assess(stk, stki)
+
                     print("______________________")
                     print(f"{stk}:{sort_dict[stk]}\t real penny")
                     print(stki)
+                    wwriter.writerow([stk,self.assess(stk, stki),"\n",stki.iloc[[-1]]])
                 elif stki['Adj Close'].iloc[-1] < self.price[1] :
                     rank +=1
                     self.update_stk(stk, stklist, writer, rank)
-                    wwriter.writerow([stk])
-                    self.assess(stk, stki)
                     print("______________________")
                     print(f"{stk}:{sort_dict[stk]}\t lincoln")   
                     print(stki)
+                    wwriter.writerow([stk,self.assess(stk, stki),"\n",stki.iloc[[-1]]])
                 else :
-                    self.assess(stk, stki)
                     print("______________________")
                     print(stk,f"is over ${self.price[1]}:",sort_dict[stk])
+                    print(stki)
+                    wwriter.writerow([stk,self.assess(stk, stki),"\n",stki.iloc[[-1]]])
                 if rank == self.ranknum:
                     break
                 
@@ -206,7 +210,6 @@ class StkHelper():
         data1 = data1.reshape(-1,1)
         data1 = data1[np.newaxis,...]
         if data1.shape[1] != 15:
-            print(data1.shape)
             need = 15 - data1.shape[1]
             stki = data.DataReader(stk, 
                         start= datetime.today()-timedelta(days=21+need,hours=14),
@@ -231,6 +234,8 @@ class StkHelper():
                 bits = np.sum(bits)
                 srating[num] = srating[num] + bits
         print("This stock is possibly "+asmnt[srating.index(min(srating))])
+
+        return "This stock is possibly "+asmnt[srating.index(min(srating))]
 
 
 if __name__ == '__main__':
