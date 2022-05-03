@@ -51,11 +51,7 @@ class StkHelper():
         self.update(penny, sort_dict, self.stklist)
 
     def scrape(self, subreddits = ['pennystocks']): # Scraping through word found in reddit
-        reddit = praw.Reddit(client_id='z1eHTSoHlmqgkw', \
-                     client_secret='Y3g69V7w6_drdPkfiFenPWb6azh2tQ', \
-                     user_agent='stkRadar', \
-                     username='Great-Practice3637', \
-                     password='satrhdqn19')
+        reddit = praw.Reddit()
         for sub in subreddits:
             subreddit = reddit.subreddit(sub)
             topPosts = subreddit.top(time_filter=self.time,limit=self.postnum)
